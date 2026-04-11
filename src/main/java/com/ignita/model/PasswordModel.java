@@ -1,13 +1,8 @@
 package com.ignita.model;
 
 public class PasswordModel {
-    public String id;
     public String password;
     public String name;
-
-    public String getId() {
-        return id;
-    }
 
     public String getPassword() {
         return password;
@@ -25,8 +20,5 @@ public class PasswordModel {
         this.name = name;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
 
 }
