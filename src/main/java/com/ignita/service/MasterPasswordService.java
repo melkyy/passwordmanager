@@ -1,0 +1,139 @@
+package com.ignita.service;
+
+import com.ignita.Main;
+import com.ignita.model.PasswordMasterModel;
+import org.json.JSONArray;
+import org.w3c.dom.ls.LSOutput;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import java.io.*;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.util.*;
+
+public class MasterPasswordService {
+    private final EncryptionService encryptionService;
+
+    public MasterPasswordService(){
+        encryptionService =  new EncryptionService();
+    }
+
+    public void createDirectory(){
+
+        File directory = new File(Main.mainDirectory);
+        if(!directory.exists()){
+            if(directory.mkdir()){
+                System.out.println("Password manager directory created at: "+Main.filePathConfig );
+            }else{
+                System.out.println("Failed to create a directory. check permissions");
+            }
+        }
+    }
+
+    public boolean existMasterFile() throws IOException {
+        System.out.println("CHECKING MASTER FILE...");
+        PasswordMasterModel masterInfo = this.getMasterPasswordFile();
+        return masterInfo != null;
+    }
+
+    public PasswordMasterModel setMasterPasswordFile(String newPassword, int iteration, int keyLength) {
+        Properties props = new Properties();
+        PasswordMasterModel masterInfo = new PasswordMasterModel();
+        File file = new File(Main.filePathConfig);
+        byte[] salt  = encryptionService.generateSalt();
+        try (FileInputStream input = new FileInputStream(file)) {
+            props.load(input);
+
+            PBEKeySpec spec = new PBEKeySpec(newPassword.toCharArray(), salt, iteration, keyLength);
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] hashedPassword = factory.generateSecret(spec).getEncoded();
+
+            props.setProperty("salt", encryptionService.toHexString(salt));
+            props.setProperty("password", encryptionService.toHexString(hashedPassword));
+            masterInfo.setPasswordByte(hashedPassword);
+            masterInfo.setSaltByte(salt);
+            try (OutputStream output = new FileOutputStream(file)) {
+                props.store(output, "Application Configuration");
+                return masterInfo;
+            } catch (NullPointerException e) {
+                System.out.println("Exception in getMasterProperties" + e);
+            }
+        } catch (IOException e) {
+            System.out.println("Exception in getMasterProperties: " + e);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+
+    public String generateFile(String password) throws IOException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeySpecException, InvalidKeyException {
+        File file = new File(Main.filePathDB);
+        if (file.createNewFile()) {
+            System.out.println("Generating DB File");
+            String jsonFile = "[]";
+            System.out.println("Encrypting File...");
+            encryptionService.encryptFile(password, Main.filePathDB, jsonFile);
+            System.out.println("File Encrypted!!");
+            return "[]";
+        } else {
+            System.out.println("Getting File Encrypted...");
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            String available;
+            StringBuilder fileResult = new StringBuilder();
+            while((available = br.readLine()) != null){
+                fileResult.append(available);
+            }
+            br.close();
+            System.out.println("File content: " + fileResult);
+            System.out.println("Decrypting File...");
+            String jsonDecrypted = encryptionService.decryptFile(password, Main.filePathDB);
+            System.out.println("JSON: " + jsonDecrypted);
+            return jsonDecrypted;
+        }
+    }
+
+    public JSONArray convertJSONArray(String jsonString) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, IOException, NoSuchAlgorithmException, BadPaddingException, InvalidKeySpecException, InvalidKeyException {
+        return new JSONArray(jsonString);
+    }
+
+    public boolean validatePassword(String password, byte[] salt, byte[] storedHash) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        System.out.println("VALIDATING PASSWORD...");
+        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, Main.ITERATIONS, Main.KEY_LENGTH);
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        byte[] hashedPassword = factory.generateSecret(spec).getEncoded();
+        return Arrays.equals(hashedPassword, storedHash);
+    }
+
+    public PasswordMasterModel getMasterPasswordFile() throws IOException {
+        File file = new File(Main.filePathConfig);
+        PasswordMasterModel masterInfo = new PasswordMasterModel();
+        Properties props = new Properties();
+        if(!file.exists()){
+            if(file.createNewFile()){
+                System.out.println("Config file created");
+            }else{
+                System.out.println("Config file error");
+            }
+        }
+        try (InputStream input = new FileInputStream(file)) {
+            props.load(input);
+        } catch (IOException e) {
+            System.out.println("Exception in getMasterProperties: " + e);
+        }
+
+        String storedPassword = props.getProperty("password");
+        String storedSalt = props.getProperty("salt");
+        if (storedPassword == null || storedSalt == null) {
+            return null;
+        }
+        masterInfo.setPasswordByte(HexFormat.of().parseHex(storedPassword));
+        masterInfo.setSaltByte(HexFormat.of().parseHex(storedSalt));
+        return masterInfo;
+    }
+}

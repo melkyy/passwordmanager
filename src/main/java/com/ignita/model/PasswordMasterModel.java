@@ -1,6 +1,6 @@
 package com.ignita.model;
 
-public class MasterModel {
+public class PasswordMasterModel {
     public byte[] passwordByte;
     public byte[] saltByte;
 
