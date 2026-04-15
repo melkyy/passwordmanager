@@ -18,7 +18,6 @@ public class PasswordRepository {
 
 
     public PasswordModel[] list() {
-        System.out.println("enter into repository");
         if(this.passwordList != null){
             PasswordModel[] pmArray = new PasswordModel[this.passwordList.length()];
             for (int i = 0; i < this.passwordList.length(); i++){
@@ -30,7 +29,6 @@ public class PasswordRepository {
             }
             return pmArray;
         }else{
-            System.out.println("There is not passwords here, create one");
             return null;
         }
     }
@@ -45,7 +43,6 @@ public class PasswordRepository {
                 }
             return pm;
         }else{
-            System.out.println("Password Not Found");
             return null;
         }
     }

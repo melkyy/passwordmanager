@@ -3,7 +3,6 @@ package com.ignita.service;
 import com.ignita.Main;
 import com.ignita.model.PasswordMasterModel;
 import org.json.JSONArray;
-import org.w3c.dom.ls.LSOutput;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -36,8 +35,7 @@ public class MasterPasswordService {
         }
     }
 
-    public boolean existMasterFile() throws IOException {
-        System.out.println("CHECKING MASTER FILE...");
+    public boolean masterFileExist() throws IOException {
         PasswordMasterModel masterInfo = this.getMasterPasswordFile();
         return masterInfo != null;
     }
@@ -58,12 +56,7 @@ public class MasterPasswordService {
             props.setProperty("password", encryptionService.toHexString(hashedPassword));
             masterInfo.setPasswordByte(hashedPassword);
             masterInfo.setSaltByte(salt);
-            try (OutputStream output = new FileOutputStream(file)) {
-                props.store(output, "Application Configuration");
-                return masterInfo;
-            } catch (NullPointerException e) {
-                System.out.println("Exception in getMasterProperties" + e);
-            }
+            return masterInfo;
         } catch (IOException e) {
             System.out.println("Exception in getMasterProperties: " + e);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
@@ -75,26 +68,11 @@ public class MasterPasswordService {
     public String generateFile(String password) throws IOException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeySpecException, InvalidKeyException {
         File file = new File(Main.filePathDB);
         if (file.createNewFile()) {
-            System.out.println("Generating DB File");
             String jsonFile = "[]";
-            System.out.println("Encrypting File...");
             encryptionService.encryptFile(password, Main.filePathDB, jsonFile);
-            System.out.println("File Encrypted!!");
             return "[]";
-        } else {
-            System.out.println("Getting File Encrypted...");
-            BufferedReader br = new BufferedReader(new FileReader(file));
-            String available;
-            StringBuilder fileResult = new StringBuilder();
-            while((available = br.readLine()) != null){
-                fileResult.append(available);
-            }
-            br.close();
-            System.out.println("File content: " + fileResult);
-            System.out.println("Decrypting File...");
-            String jsonDecrypted = encryptionService.decryptFile(password, Main.filePathDB);
-            System.out.println("JSON: " + jsonDecrypted);
-            return jsonDecrypted;
+        } else{
+            return encryptionService.decryptFile(password, Main.filePathDB);
         }
     }
 
@@ -103,7 +81,6 @@ public class MasterPasswordService {
     }
 
     public boolean validatePassword(String password, byte[] salt, byte[] storedHash) throws NoSuchAlgorithmException, InvalidKeySpecException {
-        System.out.println("VALIDATING PASSWORD...");
         PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, Main.ITERATIONS, Main.KEY_LENGTH);
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         byte[] hashedPassword = factory.generateSecret(spec).getEncoded();
@@ -115,10 +92,8 @@ public class MasterPasswordService {
         PasswordMasterModel masterInfo = new PasswordMasterModel();
         Properties props = new Properties();
         if(!file.exists()){
-            if(file.createNewFile()){
-                System.out.println("Config file created");
-            }else{
-                System.out.println("Config file error");
+            if(!file.createNewFile()) {
+            return null;
             }
         }
         try (InputStream input = new FileInputStream(file)) {

@@ -5,6 +5,8 @@ import com.ignita.service.MasterPasswordService;
 import com.ignita.service.PasswordService;
 import org.json.JSONArray;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Scanner;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -12,22 +14,28 @@ import java.util.Scanner;
 public class Main {
     public static final int ITERATIONS = 50000;
     public static final int KEY_LENGTH = 256;
-    public static final String mainDirectory = "C:\\passwordManagerDataJAVA";
+    public static String mainDirectory = "C:\\passwordManagerDataJAVA";
     public static final String filePathDB = mainDirectory+"\\db.txt";
     public static final String filePathConfig = mainDirectory+"\\config.properties";
 
     public static void main(String[] args) {
         try {
-
+            Path currentPath = Paths.get("").toAbsolutePath();
+            Path root = currentPath.getRoot();
+            Main.mainDirectory = root+"\\passwordManagerDataJAVA";
             MasterPasswordService masterPasswordService = new MasterPasswordService();
             PasswordMasterModel masterInfo;
             Scanner Scan = new Scanner(System.in);
+            System.out.println("Checking directory...");
             masterPasswordService.createDirectory();
-            if(!masterPasswordService.existMasterFile()){
+            System.out.println("Directory located at: "+ mainDirectory);
+            System.out.println("Checking config file...");
+            if(!masterPasswordService.masterFileExist()){
+                System.out.println("File not found...");
                 System.out.println("Enter a new password: ");
                 System.out.println("NOTICE: If you forget the password, it cannot be recovered");
                 String newPassword = Scan.nextLine();
-
+                System.out.println("File created at: "+filePathConfig);
                 masterInfo = masterPasswordService.setMasterPasswordFile(newPassword, Main.ITERATIONS, Main.KEY_LENGTH);
                 System.out.println("Password set!!");
             }else{
@@ -67,13 +75,13 @@ public class Main {
                     passwordService.add(passWordAdd, nameAdd);
                     System.out.println("ENCRYPTING...");
                     passwordService.encryptPasswordListFile(masterPassword);
-                    System.out.println("The file was saved correctly");
+                    System.out.println("The file saved successfully");
                 }
                 if (option.equals("2")) {
                     passwordService.list();
                 }
                 if (option.equals("3")) {
-                    System.out.println("enter a list of element by number");
+                    System.out.println("enter a item number");
                     String index = Scan.nextLine();
                     passwordService.show(Integer.parseInt(index));
                 }
@@ -88,7 +96,7 @@ public class Main {
             }
         } catch (Exception e) {
             System.out.println(e);
-            System.out.println("OPTION ERROR, INCORRECT OPTION");
+            System.out.println("An error has occurred");
         }
 
     }
